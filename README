@@ -1,0 +1,67 @@
+NAME
+    Sub::Spec::URI::http - http (and https) scheme handler for
+    Sub::Spec::URI
+
+VERSION
+    version 0.02
+
+SYNOPSIS
+     # specify module
+     http://HOST/api/MOD::SUBMOD
+
+     # specify module & sub name
+     https://HOST/api/MOD::SUBMOD/FUNC
+
+     # specify module, sub, and arguments
+     http://HOST:5000/api/MOD::SUBMOD/FUNC?ARG1=VAL1&ARG2=VAL2
+
+DESCRIPTION
+    HTTP server must implement Sub::Spec::HTTP specification.
+
+    Since URL format can vary (e.g. some host might use
+    http://HOST/api/v1/MOD/SUBMOD/FUNC/arg1/arg2, some other might use
+    http://HOST/MOD::SUBMOD/FUNC?arg1=1&arg2=2, and so on), to determine
+    module(), sub(), and args(), an 'about' command is requested on the
+    server to get 'server_url', 'module', 'sub', 'args' information. It is
+    then cached.
+
+CONFIGURATION
+    Some configuration is available in the following package variables:
+
+    *   $Retries => INT (default 3)
+
+        Number of retries to do on network failure. Setting it to 0 will
+        disable retries.
+
+    *   $Retry_Delay => INT (default 3)
+
+        Number of seconds to wait between retries.
+
+    *   LWP_Implementor => STR
+
+        If specified, use this class for http LWP::Protocol::implementor().
+        For example, to access Unix socket server instead of a normal TCP
+        one, set this to 'LWP::Protocol::http::SocketUnix'.
+
+    *   $Log_Level => INT|STR
+
+        Request logging output from server. This will be sent in
+        'X-SS-Req-Log-Level' HTTP request header. If not specified, default
+        log level will be determined from environment variable (like TRACE,
+        DEBUG, etc).
+
+    *   $Log_Callback => CODE
+
+        Pass log messages to this subroutine. If not specified, log messages
+        will be "rethrown" into Log::Any logging methods (e.g. $log->warn(),
+        $log->debug(), etc).
+
+AUTHOR
+    Steven Haryanto <stevenharyanto@gmail.com>
+
+COPYRIGHT AND LICENSE
+    This software is copyright (c) 2011 by Steven Haryanto.
+
+    This is free software; you can redistribute it and/or modify it under
+    the same terms as the Perl 5 programming language system itself.
+

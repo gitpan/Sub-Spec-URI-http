@@ -1,0 +1,13 @@
+Revision history for Sub::Spec::URI::http
+
+0.02     2011-08-31
+
+         - Complete implementation, now call(), spec(), list_subs(), module(),
+           sub(), args() implemented.
+
+         - Some other fixes.
+
+
+0.01     2011-08-29
+
+         First release.
