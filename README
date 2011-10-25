@@ -3,7 +3,7 @@ NAME
     Sub::Spec::URI
 
 VERSION
-    version 0.02
+    version 0.03
 
 SYNOPSIS
      # specify module

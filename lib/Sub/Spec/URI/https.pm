@@ -1,10 +1,11 @@
 package Sub::Spec::URI::https;
-BEGIN {
-  $Sub::Spec::URI::https::VERSION = '0.02';
-}
 use parent qw(Sub::Spec::URI::http);
 
-# VERSION
+our $VERSION = '0.03'; # VERSION
+
+sub proto {
+    "https";
+}
 
 1;
 
@@ -17,7 +18,7 @@ Sub::Spec::URI::https
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 AUTHOR
 

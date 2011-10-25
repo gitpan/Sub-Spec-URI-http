@@ -1,5 +1,12 @@
 Revision history for Sub::Spec::URI::http
 
+0.03     2011-10-24
+
+         - Update to SS::URI 0.10 (spec_other, call_other, load_module_hook).
+
+         - Some other fixes.
+
+
 0.02     2011-08-31
 
          - Complete implementation, now call(), spec(), list_subs(), module(),

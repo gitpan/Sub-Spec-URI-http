@@ -1,7 +1,4 @@
 package Sub::Spec::URI::http;
-BEGIN {
-  $Sub::Spec::URI::http::VERSION = '0.02';
-}
 
 use 5.010;
 use strict;
@@ -17,7 +14,7 @@ use LWP::Debug;
 use LWP::Protocol;
 use LWP::UserAgent;
 
-# VERSION
+our $VERSION = '0.03'; # VERSION
 
 our $Retries         = 3;
 our $Retry_Delay     = 3;
@@ -27,6 +24,10 @@ our $Log_Callback    = undef;
 
 my @logging_methods = Log::Any->logging_methods();
 my $json = JSON->new->allow_nonref;
+
+sub proto {
+    "http";
+}
 
 sub _get_default_log_level {
     if ($ENV{LOG_LEVEL}) {
@@ -42,13 +43,14 @@ sub _get_default_log_level {
     }
 }
 
+my $_req_counter = 0;
 sub _req {
     my ($self, $ssreq) = @_;
 
     state $ua;
-    my $http_res;
     my @body;
     my $in_body;
+    my $mark_log;
 
     if (!$ua) {
         $ua = LWP::UserAgent->new;
@@ -57,6 +59,7 @@ sub _req {
             "response_data",
             sub {
                 my ($resp, $ua, $h, $data) = @_;
+                #$log->tracef("got resp: %s (%d bytes)", $data, length($data));
                 # LWP::UserAgent can chop a single chunk from server into
                 # several chunks
                 if ($in_body) {
@@ -64,8 +67,13 @@ sub _req {
                     return 1;
                 }
 
-                $data =~ s/(.)//;
-                my $chunk_type = $1;
+                my $chunk_type;
+                if ($mark_log) {
+                    $data =~ s/(.)//;
+                    $chunk_type = $1;
+                } else {
+                    $chunk_type = 'R';
+                }
                 if ($chunk_type eq 'L') {
                     if ($Log_Callback) {
                         $Log_Callback->($data);
@@ -81,19 +89,11 @@ sub _req {
                     push @body, $data;
                     return 1;
                 } else {
-                    $http_res = [
-                        500,
-                        "Unknown chunk type from server: $chunk_type"];
+                    @body = ('[500, "Unknown chunk type from server: '.
+                                 $chunk_type.'"]');
                     return 0;
                 }
             }
-        );
-        $ua->set_my_handler(
-            "response_done",
-            sub {
-                my ($resp, $ua, $h) = @_;
-                $http_res = HTTP::Response->parse(join "", @body);
-            },
         );
     }
 
@@ -109,11 +109,12 @@ sub _req {
         $req->header($hk => $hv);
     }
     my $log_level = $Log_Level // $self->_get_default_log_level();
-    $req->header('X-SS-Mark-Log' => $log_level);
-    $req->header('X-SS-Log-Level' => $log_level);
-    $req->header('X-SS-Output-Format' => 'json');
+    $mark_log = $log_level ? 1:0;
+    $req->header('X-SS-Req-Mark-Log' => $mark_log);
+    $req->header('X-SS-Req-Log-Level' => $log_level);
+    $req->header('X-SS-Req-Output-Format' => 'json');
 
-    my %args = %{$self->args};
+    my %args;
     if ($ssreq->{args}) {
         for (keys %{$ssreq->{args}}) {
             $args{$_} = $ssreq->{args}{$_};
@@ -164,17 +165,21 @@ sub _req {
     return [500, "Network failure: ".$http0_res->code." - ".$http0_res->message]
         unless $http0_res->is_success;
     return [500, "Empty response from server"] if !length($http0_res->content);
-    return [500, "Incomplete chunked response from server"] unless $http_res;
-    #$log->tracef($http0_res->as_string);
-    #$log->tracef($http_res->as_string);
+    return [500, "Empty response from server"] unless @body;
 
     my $res;
     eval {
-        #$log->debugf("http_res content: %s", $http_res->content);
-        $res = $json->decode($http_res->content);
+        #$log->debugf("body: %s", \@body);
+        $res = $json->decode(join "", @body);
     };
     my $eval_err = $@;
     return [500, "Invalid JSON from server: $eval_err"] if $eval_err;
+
+    unless ($_req_counter++) {
+        if ($Sub::Spec::URI::load_module_hook) {
+            $Sub::Spec::URI::load_module_hook->($self);
+        }
+    }
 
     #use Data::Dump; dd $res;
     $res;
@@ -185,8 +190,8 @@ sub _check {
 
 sub _about {
     my ($self) = @_;
-    unless ($self->{_about_cache}) {
-        my $res = $self->_req(command => "about");
+    unless (exists $self->{_about_cache}) {
+        my $res = $self->_req({command => "about"});
         die "Can't get about from URL: $res->[0] - $res->[1]"
             unless $res->[0] == 200;
         die "Invalid about response from server: not a hash"
@@ -216,19 +221,32 @@ sub args {
 
 sub spec {
     my ($self) = @_;
-    $self->_req(command => "spec");
+    my $res = $self->_req({command => "spec"});
+    $res->[2];
+}
+
+sub spec_other {
+    my ($self, $other) = @_;
+    my $res = $self->_req({command => "spec", %$other});
+    $res->[2];
 }
 
 sub list_subs {
     my ($self, %args) = @_;
-    $self->_req(command => "list_subs");
+    my $res = $self->_req({command => "list_subs"});
 }
 
 # sub list_mods {}
 
 sub call {
     my ($self, %args) = @_;
-    $self->_req(command => "call", args => \%args);
+    $self->_req({command => "call", args => \%args});
+}
+
+sub call_other {
+    my ($self, $other, %args) = @_;
+    my $res = $self->_req({command => "call", args => \%args, %$other});
+    $res->[2];
 }
 
 1;
@@ -244,7 +262,7 @@ Sub::Spec::URI::http - http (and https) scheme handler for Sub::Spec::URI
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 SYNOPSIS
 
