@@ -14,7 +14,7 @@ use LWP::Debug;
 use LWP::Protocol;
 use LWP::UserAgent;
 
-our $VERSION = '0.03'; # VERSION
+our $VERSION = '0.04'; # VERSION
 
 our $Retries         = 3;
 our $Retry_Delay     = 3;
@@ -46,12 +46,9 @@ sub _get_default_log_level {
 my $_req_counter = 0;
 sub _req {
     my ($self, $ssreq) = @_;
+    $log->tracef("-> _req(%s)", $ssreq);
 
     state $ua;
-    my @body;
-    my $in_body;
-    my $mark_log;
-
     if (!$ua) {
         $ua = LWP::UserAgent->new;
         $ua->env_proxy;
@@ -59,11 +56,16 @@ sub _req {
             "response_data",
             sub {
                 my ($resp, $ua, $h, $data) = @_;
+
+                my $body     = $ua->{__body};
+                my $in_body  = $ua->{__in_body};
+                my $mark_log = $ua->{__mark_log};
+
                 #$log->tracef("got resp: %s (%d bytes)", $data, length($data));
                 # LWP::UserAgent can chop a single chunk from server into
                 # several chunks
                 if ($in_body) {
-                    push @body, $data;
+                    push @$body, $data;
                     return 1;
                 }
 
@@ -86,16 +88,20 @@ sub _req {
                     return 1;
                 } elsif ($chunk_type eq 'R') {
                     $in_body++;
-                    push @body, $data;
+                    push @$body, $data;
                     return 1;
                 } else {
-                    @body = ('[500, "Unknown chunk type from server: '.
-                                 $chunk_type.'"]');
+                    $body = ['[500, "Unknown chunk type from server: '.
+                                 $chunk_type.'"]'];
                     return 0;
                 }
             }
         );
     }
+
+    # need to set due to closure?
+    $ua->{__body}     = [];
+    $ua->{__in_body}  = 0;
 
     my $req = HTTP::Request->new(POST => $self->{_uri});
     for (keys %$ssreq) {
@@ -109,8 +115,8 @@ sub _req {
         $req->header($hk => $hv);
     }
     my $log_level = $Log_Level // $self->_get_default_log_level();
-    $mark_log = $log_level ? 1:0;
-    $req->header('X-SS-Req-Mark-Log' => $mark_log);
+    $ua->{__mark_log} = $log_level ? 1:0;
+    $req->header('X-SS-Req-Mark-Log' => $ua->{__mark_log});
     $req->header('X-SS-Req-Log-Level' => $log_level);
     $req->header('X-SS-Req-Output-Format' => 'json');
 
@@ -164,13 +170,15 @@ sub _req {
 
     return [500, "Network failure: ".$http0_res->code." - ".$http0_res->message]
         unless $http0_res->is_success;
-    return [500, "Empty response from server"] if !length($http0_res->content);
-    return [500, "Empty response from server"] unless @body;
+    return [500, "Empty response from server (1)"]
+        if !length($http0_res->content);
+    return [500, "Empty response from server (2)"]
+        unless @{$ua->{__body}};
 
     my $res;
     eval {
-        #$log->debugf("body: %s", \@body);
-        $res = $json->decode(join "", @body);
+        #$log->debugf("body: %s", $ua->{__body});
+        $res = $json->decode(join "", @{$ua->{__body}});
     };
     my $eval_err = $@;
     return [500, "Invalid JSON from server: $eval_err"] if $eval_err;
@@ -181,6 +189,7 @@ sub _req {
         }
     }
 
+    $log->tracef("<- successful _req()");
     #use Data::Dump; dd $res;
     $res;
 }
@@ -262,7 +271,7 @@ Sub::Spec::URI::http - http (and https) scheme handler for Sub::Spec::URI
 
 =head1 VERSION
 
-version 0.03
+version 0.04
 
 =head1 SYNOPSIS
 

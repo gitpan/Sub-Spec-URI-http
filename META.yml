@@ -24,4 +24,4 @@ requires:
 resources:
   homepage: http://search.cpan.org/dist/Sub-Spec-URI-http/
   repository: http://github.com/sharyanto/perl-Sub-Spec-URI-http
-version: 0.03
+version: 0.04
