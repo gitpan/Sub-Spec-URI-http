@@ -3,7 +3,7 @@ NAME
     Sub::Spec::URI
 
 VERSION
-    version 0.04
+    version 0.05
 
 SYNOPSIS
      # specify module
@@ -16,6 +16,12 @@ SYNOPSIS
      http://HOST:5000/api/MOD::SUBMOD/FUNC?ARG1=VAL1&ARG2=VAL2
 
 DESCRIPTION
+    NOTICE: This module and the Sub::Spec standard is deprecated as of Jan
+    2012. Rinci is the new specification to replace Sub::Spec, it is about
+    95% compatible with Sub::Spec, but corrects a few issues and is more
+    generic. "Perinci::*" is the Perl implementation for Rinci and many of
+    its modules can handle existing Sub::Spec sub specs.
+
     HTTP server must implement Sub::Spec::HTTP specification.
 
     Since URL format can vary (e.g. some host might use
@@ -60,7 +66,7 @@ AUTHOR
     Steven Haryanto <stevenharyanto@gmail.com>
 
 COPYRIGHT AND LICENSE
-    This software is copyright (c) 2011 by Steven Haryanto.
+    This software is copyright (c) 2012 by Steven Haryanto.
 
     This is free software; you can redistribute it and/or modify it under
     the same terms as the Perl 5 programming language system itself.

@@ -1,5 +1,10 @@
 Revision history for Sub::Spec::URI::http
 
+0.05     2012-01-21
+
+         No functional changes. Mark deprecated.
+
+
 0.04     2011-10-24
 
          - Fix subsequent request generating empty response.
